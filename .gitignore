@@ -1,0 +1,15 @@
+# Node modules
+node_modules/
+dist/
+build/
+
+# Variables de entorno
+.env
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# WhatsApp Session (IMPORTANTE: No subir tu sesión de WhatsApp)
+.wwebjs_auth/
+.wwebjs_cache/
