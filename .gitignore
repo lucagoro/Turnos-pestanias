@@ -13,3 +13,7 @@ Thumbs.db
 # WhatsApp Session (IMPORTANTE: No subir tu sesión de WhatsApp)
 .wwebjs_auth/
 .wwebjs_cache/
+
+/src/generated/prisma 
+
+# TENOG QUE ACOMODAR LAS RUTASSSSSSSSSSSSSSSSSS

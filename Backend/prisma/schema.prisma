@@ -1,0 +1,69 @@
+// prisma/schema.prisma
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. La Dueña (Admin)
+model Admin {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+}
+
+// 2. Servicios (Pestañas)
+model Service {
+  id              Int           @id @default(autoincrement())
+  name            String
+  description     String
+  price           Decimal       @db.Decimal(10, 2)
+  durationMinutes Int           // Clave para calcular el fin del turno
+  active          Boolean       @default(true)
+  appointments    Appointment[]
+}
+
+// 3. Turnos (Con soporte para Mercado Pago)
+model Appointment {
+  id              Int      @id @default(autoincrement())
+  clientName      String
+  clientWhatsApp  String
+  startTime       DateTime // Fecha y hora de inicio
+  endTime         DateTime // IMPORTANTE: Para validar solapamientos fácil
+  
+  // Estados: PENDING_PAYMENT, CONFIRMED, CANCELLED, COMPLETED
+  status          String   @default("PENDING_PAYMENT") 
+  
+  // Para Mercado Pago
+  mpPreferenceId  String  @unique // Para vincular con el pago
+  paid            Boolean  @default(false)
+  depositAmount   Decimal @db.Decimal(10, 2)
+
+  serviceId       Int
+  service         Service  @relation(fields: [serviceId], references: [id])
+  
+  createdAt       DateTime @default(now())
+}
+
+// 4. Horarios Fijos (Lunes a Viernes, etc.)
+model BusinessHours {
+  id        Int     @id @default(autoincrement())
+  dayOfWeek Int     // 0 = Domingo, 1 = Lunes...
+  openTime  String  // "09:00"
+  closeTime String  // "18:00"
+  enabled   Boolean @default(true)
+}
+
+// 5. Bloqueos de Agenda (Días especiales)
+model ScheduleBlock {
+  id          Int      @id @default(autoincrement())
+  date        DateTime // Día bloqueado
+  allDay      Boolean  @default(true)
+  startTime   DateTime  // Por si bloquea solo una tarde
+  endTime     DateTime
+  reason      String  // "Médico", "Feriado"
+}
