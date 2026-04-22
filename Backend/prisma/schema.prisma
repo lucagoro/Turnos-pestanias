@@ -39,7 +39,7 @@ model Appointment {
   status          String   @default("PENDING_PAYMENT") 
   
   // Para Mercado Pago
-  mpPreferenceId  String  @unique // Para vincular con el pago
+  mpPreferenceId  String?  @unique // Para vincular con el pago
   paid            Boolean  @default(false)
   depositAmount   Decimal @db.Decimal(10, 2)
 
@@ -63,7 +63,7 @@ model ScheduleBlock {
   id          Int      @id @default(autoincrement())
   date        DateTime // Día bloqueado
   allDay      Boolean  @default(true)
-  startTime   DateTime  // Por si bloquea solo una tarde
-  endTime     DateTime
-  reason      String  // "Médico", "Feriado"
+  startTime   DateTime?  // Por si bloquea solo una tarde
+  endTime     DateTime?
+  reason      String?  // "Médico", "Feriado"
 }

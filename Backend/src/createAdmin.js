@@ -4,7 +4,7 @@ import 'dotenv/config';
 
 async function createAdmin() {
   const email = "admin@estudio.com"; 
-  const password = "password123";    
+  const password = "admin.01";    // password123
 
   console.log("--- Iniciando creación de Admin ---");
   
