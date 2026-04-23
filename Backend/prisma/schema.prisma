@@ -40,8 +40,8 @@ model Appointment {
   
   // Para Mercado Pago
   mpPreferenceId  String?  @unique // Para vincular con el pago
-  paid            Boolean  @default(false)
   depositAmount   Decimal @db.Decimal(10, 2)
+  paymentMethod   String  @default("MP")
 
   serviceId       Int
   service         Service  @relation(fields: [serviceId], references: [id])

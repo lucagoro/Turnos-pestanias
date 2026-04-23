@@ -6,12 +6,17 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from './config/db.js';
 import { verifyToken } from './middlewares/auth.js';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors()); // Para que React pueda consultar desde otro puerto
 app.use(express.json()); // Para que Express entienda cuando le mandamos JSON
+
+const client = new MercadoPagoConfig({ 
+  accessToken: 'APP_USR-8031842975015628-042306-0cc4f70f5d6a1800d5c78f5b20b48284-3355415632' // Cambiarlo por tu token real de Mercado Pago (de preferencia, guardarlo en .env)
+});
 
 // --- RUTA DE LOGIN ---
 app.post('/api/auth/login', async (req, res) => {
@@ -145,8 +150,44 @@ app.post('/api/appointments', async (req, res) => {
         depositAmount: depositRequired, // Tu cálculo del 30%
         status: initialStatus,
         paymentMethod: paymentMethod
-      }
+      },
+      include: { service: true } // Traemos el nombre del servicio para MP
     });
+
+    //  Si eligió Mercado Pago, creamos la Preferencia
+    if (paymentMethod === "MP") {
+      const preference = new Preference(client);
+
+      const result = await preference.create({
+        body: {
+          items: [
+            {
+              id: newAppointment.id.toString(),
+              title: `Seña: ${newAppointment.service.name}`,
+              quantity: 1,
+              unit_price: Number(newAppointment.depositAmount),
+              currency_id: 'ARS'
+            }
+          ],
+          // URL a la que vuelve la clienta después de pagar
+          back_urls: {
+            success: "https://tudominio.com/pago-exitoso",
+            failure: "https://tudominio.com/pago-fallido",        // Cambiar estas urls
+            pending: "https://tudominio.com/pago-pendiente"
+          },
+          auto_return: "approved",
+          // El 'external_reference' es CLAVE: acá guardamos el ID de nuestro turno
+          external_reference: newAppointment.id.toString(),
+          notification_url: "https://drone-payee-exporter.ngrok-free.dev/api/webhook/mercadopago" // Cambiar en un futuro Donde Mercado Pago envía las notificaciones de pago
+        }
+      });
+
+      // Devolvemos el link de pago (init_point)
+      return res.json({ 
+        appointment: newAppointment, 
+        init_point: result.init_point 
+      });
+    }
 
     // Preparamos el mensaje de WhatsApp para el Frontend
     let whatsappMessage = "";
@@ -165,50 +206,45 @@ app.post('/api/appointments', async (req, res) => {
   }
 });
 
-// RUTA PROTEGIDA: Obtener todos los turnos (solo para admins logueados)
-app.get('/api/admin/appointments', verifyToken, async (req, res) => {
-  const { date } = req.query; // Opcional: para filtrar por un día específico
+app.post('/api/webhook/mercadopago', async (req, res) => {
+  const { query } = req;
+  
+  // // MP envía notificaciones de muchos tipos. Solo nos importa 'payment'
+  const topic = query.topic || query.type;
 
-  try {
-    let whereClause = {};
+   try {
+     if (topic === 'payment') {
+       const paymentId = query.id || query['data.id'];
+      
+       // Consultamos a Mercado Pago por el estado de ese pago
+       const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+         headers: {
+           'Authorization': `Bearer APP_USR-8031842975015628-042306-0cc4f70f5d6a1800d5c78f5b20b48284-3355415632`
+         }
+       });
 
-    if (date) {
-      const dayStart = new Date(date + "T00:00:00Z");
-      const dayEnd = new Date(date + "T23:59:59Z");
-      whereClause = {
-        startTime: { gte: dayStart, lte: dayEnd }
-      };
-    }
+      if (response.ok) {
+        const data = await response.json();
 
-    const appointments = await prisma.appointment.findMany({
-      where: whereClause,
-      include: {
-        service: true // Esto incluye los detalles del servicio (nombre, precio, etc.)
-      },
-      orderBy: {
-        startTime: 'asc' // Ordenados por hora, del más temprano al más tarde
+        // Si el pago fue aprobado...
+        if (data.status === 'approved') {
+         const appointmentId = data.external_reference; // El ID que guardamos antes
+
+         // Actualizamos el turno a CONFIRMED
+         await prisma.appointment.update({
+           where: { id: Number(appointmentId) },
+           data: { status: 'CONFIRMED' }
+         });
+
+         console.log(`✅ Turno #${appointmentId} confirmado por Mercado Pago`);
       }
-    });
-
-    res.json(appointments);
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener la agenda" });
+    }
   }
-});
-
-app.patch('/api/admin/appointments/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body; // Esperamos "CONFIRMED" o "CANCELLED"
-
-  try {
-    const updated = await prisma.appointment.update({
-      where: { id: Number(id) },
-      data: { status: status }
-    });
-
-    res.json({ message: "Turno actualizado", updated });
+  // Siempre respondemos 200 a MP para que no siga reintentando
+    res.sendStatus(200);
   } catch (error) {
-    res.status(500).json({ error: "No se pudo actualizar el turno" });
+    console.error("Error en Webhook:", error);
+    res.sendStatus(500);
   }
 });
 
@@ -273,6 +309,55 @@ app.get('/api/availability', async (req, res) => {
     res.status(500).json({ error: "Error al calcular disponibilidad" });
   }
 });
+
+// RUTA PROTEGIDA: Obtener todos los turnos (solo para admins logueados)
+app.get('/api/admin/appointments', verifyToken, async (req, res) => {
+  const { date } = req.query; // Opcional: para filtrar por un día específico
+
+  try {
+    let whereClause = {};
+
+    if (date) {
+      const dayStart = new Date(date + "T00:00:00Z");
+      const dayEnd = new Date(date + "T23:59:59Z");
+      whereClause = {
+        startTime: { gte: dayStart, lte: dayEnd }
+      };
+    }
+
+    const appointments = await prisma.appointment.findMany({
+      where: whereClause,
+      include: {
+        service: true // Esto incluye los detalles del servicio (nombre, precio, etc.)
+      },
+      orderBy: {
+        startTime: 'asc' // Ordenados por hora, del más temprano al más tarde
+      }
+    });
+
+    res.json(appointments);
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener la agenda" });
+  }
+});
+
+app.patch('/api/admin/appointments/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // Esperamos "CONFIRMED" o "CANCELLED"
+
+  try {
+    const updated = await prisma.appointment.update({
+      where: { id: Number(id) },
+      data: { status: status }
+    });
+
+    res.json({ message: "Turno actualizado", updated });
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo actualizar el turno" });
+  }
+});
+
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor listo en http://localhost:${PORT}`);
