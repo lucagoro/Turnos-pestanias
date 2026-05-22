@@ -57,7 +57,7 @@ const registerShutdownHandlers = () => {
 // 🔑 NUEVO INTENTO DE CÓDIGO DE VINCULACIÓN ACTUALIZADO:
 client.on('qr', async (qr) => {
     // Busca tu número en el .env de Railway, y si no está, usa el tuyo de pruebas
-    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492314617457"; 
+    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492284214315"; 
     
     console.log(`🤖 Intentando generar código de vinculación para: ${numeroDeYas}...`);
     
