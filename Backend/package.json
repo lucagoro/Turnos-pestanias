@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "start": "npx prisma generate && node src/app.js"
   },
   "keywords": [],
   "author": "Luca Gorosito",
