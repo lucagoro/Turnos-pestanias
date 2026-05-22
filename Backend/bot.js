@@ -1,7 +1,7 @@
 // bot.js
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
-import qrcode from 'qrcode-terminal';
+// import qrcode from 'qrcode-terminal';
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -53,9 +53,24 @@ const registerShutdownHandlers = () => {
   });
 };
 
-client.on('qr', (qr) => {
-    console.log('ESCANEA ESTE QR CON TU WHATSAPP:');
-    qrcode.generate(qr, { small: true });
+// client.on('qr', (qr) => {
+//     console.log('ESCANEA ESTE QR CON TU WHATSAPP:');
+//     qrcode.generate(qr, { small: true });
+// });
+
+client.on('qr', async (qr) => {
+    // Reemplazá este número por el número real de Yas (con código de país, ej: 5492284xxxxxx)
+    // Lo ideal es meterlo en una variable de entorno, pero podés hardcodearlo un segundo para el deploy.
+    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492284214315"; 
+    
+    try {
+        const pairingCode = await client.requestPairingCode(numeroDeYas);
+        console.log("==========================================");
+        console.log(`🔑 TU CÓDIGO DE VINCULACIÓN ES: ${pairingCode}`);
+        console.log("==========================================");
+    } catch (err) {
+        console.error("Error al pedir el código de vinculación:", err);
+    }
 });
 
 client.on('ready', () => {
