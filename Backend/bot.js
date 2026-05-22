@@ -89,13 +89,26 @@ const normalizeWhatsappNumber = (number) => {
     return `${digits}@c.us`;
 };
 
-export const sendWhatsappMessage = async (number, message) => {
+export const sendWhatsappMessage = async (number, message, retries = 3) => {
     try {
         const chatId = normalizeWhatsappNumber(number);
+        
+        // 🔥 CLAVE: Le damos un respiro al cliente por si la página se estaba refrescando
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         await client.sendMessage(chatId, message);
-        console.log(`📩 Mensaje enviado a ${number}`);
+        console.log(`📩 Mensaje enviado con éxito a ${number}`);
     } catch (error) {
-        console.error('❌ Error enviando mensaje:', error);
+        console.error(`❌ Error enviando mensaje a ${number}:`, error.message || error);
+        
+        // Si todavía nos quedan intentos, esperamos 3 segundos y probamos de nuevo
+        if (retries > 0) {
+            console.log(`🔄 Reintentando envío... Quedan ${retries} intentos.`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            return sendWhatsappMessage(number, message, retries - 1);
+        } else {
+            console.error(`💥 Se agotaron los reintentos. El mensaje a ${number} no se pudo enviar.`);
+        }
     }
 };
 
