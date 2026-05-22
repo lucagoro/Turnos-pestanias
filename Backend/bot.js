@@ -1,6 +1,8 @@
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 
+import fs from 'fs';
+
 const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: './sessions'
@@ -54,24 +56,14 @@ const registerShutdownHandlers = () => {
     });
 };
 
-// 🔑 NUEVO INTENTO DE CÓDIGO DE VINCULACIÓN ACTUALIZADO:
-client.on('qr', async (qr) => {
-    // Busca tu número en el .env de Railway, y si no está, usa el tuyo de pruebas
-    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492284214315"; 
+client.on('qr', (qr) => {
+    console.log('============= ¡NUEVO CÓDIGO QR GENERADO! =============');
     
-    console.log(`🤖 Intentando generar código de vinculación para: ${numeroDeYas}...`);
+    // Guardamos el código de texto puro en un archivo temporal
+    fs.writeFileSync('./qr-code.txt', qr); 
     
-    try {
-        // Le damos un mini respiro de 3 segundos a Puppeteer para que cargue bien la página antes de pedir el código
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        const pairingCode = await client.requestPairingCode(numeroDeYas);
-        console.log("==========================================");
-        console.log(`🔑 TU CÓDIGO DE VINCULACIÓN ES: ${pairingCode}`);
-        console.log("==========================================");
-    } catch (err) {
-        console.error("❌ Falló el código. Error original:", err.message || err);
-    }
+    console.log('💾 QR guardado en el servidor. Podés escanearlo entrando a /ver-qr');
+    console.log('======================================================');
 });
 
 client.on('ready', () => {

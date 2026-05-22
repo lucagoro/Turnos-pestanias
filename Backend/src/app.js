@@ -7,7 +7,9 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './config/db.js';
 import { verifyToken } from './middlewares/auth.js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { sendWhatsappMessage } from '../bot.js'; 
+import { sendWhatsappMessage } from '../bot.js';
+import QRCode from 'qrcode';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -709,6 +711,34 @@ app.patch('/api/admin/business-hours/:id', verifyToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Error al actualizar horario" });
   }
+});
+
+app.get('/ver-qr', async (req, res) => {
+    const pathTxt = './qr-code.txt';
+    
+    if (!fs.existsSync(pathTxt)) {
+        return res.send(`
+            <div style="font-family: sans-serif; text-align: center; padding: 50px;">
+                <h1>El bot ya está conectado, o todavía está cargando.</h1>
+                <p>Esperá 5 segundos y dale a refrescar (F5).</p>
+            </div>
+        `);
+    }
+    
+    try {
+        // Leemos el texto del QR
+        const qrTexto = fs.readFileSync(pathTxt, 'utf-8');
+        
+        // La librería genera la imagen directamente y la manda al navegador
+        res.type('png');
+        await QRCode.toFileStream(res, qrTexto, {
+            width: 400, // Tamaño perfecto para el celu
+            margin: 2   // Margen limpio
+        });
+    } catch (err) {
+        console.error('Error al generar la imagen del QR:', err);
+        res.status(500).send('Error al generar el QR');
+    }
 });
 
 
