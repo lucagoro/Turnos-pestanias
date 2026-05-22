@@ -1,7 +1,6 @@
-// bot.js
+import qrcode from 'qrcode-terminal';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
-// import qrcode from 'qrcode-terminal';
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -25,52 +24,40 @@ const client = new Client({
 let shuttingDown = false;
 
 const shutdownWhatsappClient = async (reason) => {
-  if (shuttingDown) return;
-  shuttingDown = true;
+    if (shuttingDown) return;
+    shuttingDown = true;
 
-  console.log(`Cerrando WhatsApp client (${reason})...`);
-  try {
-    await client.destroy();
-    console.log('WhatsApp client cerrado correctamente.');
-  } catch (error) {
-    console.error('Error cerrando WhatsApp client:', error);
-  } finally {
-    process.exit(0);
-  }
+    console.log(`Cerrando WhatsApp client (${reason})...`);
+    try {
+        await client.destroy();
+        console.log('WhatsApp client cerrado correctamente.');
+    } catch (error) {
+        console.error('Error cerrando WhatsApp client:', error);
+    } finally {
+        process.exit(0);
+    }
 };
 
 const registerShutdownHandlers = () => {
-  process.on('SIGINT', () => shutdownWhatsappClient('SIGINT'));
-  process.on('SIGTERM', () => shutdownWhatsappClient('SIGTERM'));
-  process.on('beforeExit', () => shutdownWhatsappClient('beforeExit'));
-  process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception en proceso:', error);
-    shutdownWhatsappClient('uncaughtException');
-  });
-  process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled rejection en proceso:', reason);
-    shutdownWhatsappClient('unhandledRejection');
-  });
+    process.on('SIGINT', () => shutdownWhatsappClient('SIGINT'));
+    process.on('SIGTERM', () => shutdownWhatsappClient('SIGTERM'));
+    process.on('beforeExit', () => shutdownWhatsappClient('beforeExit'));
+    process.on('uncaughtException', (error) => {
+        console.error('Uncaught exception en proceso:', error);
+        shutdownWhatsappClient('uncaughtException');
+    });
+    process.on('unhandledRejection', (reason) => {
+        console.error('Unhandled rejection en proceso:', reason);
+        shutdownWhatsappClient('unhandledRejection');
+    });
 };
 
-// client.on('qr', (qr) => {
-//     console.log('ESCANEA ESTE QR CON TU WHATSAPP:');
-//     qrcode.generate(qr, { small: true });
-// });
-
-client.on('qr', async (qr) => {
-    // Reemplazá este número por el número real de Yas (con código de país, ej: 5492284xxxxxx)
-    // Lo ideal es meterlo en una variable de entorno, pero podés hardcodearlo un segundo para el deploy.
-    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492284214315"; 
-    
-    try {
-        const pairingCode = await client.requestPairingCode(numeroDeYas);
-        console.log("==========================================");
-        console.log(`🔑 TU CÓDIGO DE VINCULACIÓN ES: ${pairingCode}`);
-        console.log("==========================================");
-    } catch (err) {
-        console.error("Error al pedir el código de vinculación:", err);
-    }
+// 🚀 EVENTO DEL QR COMPACTO ACTIVADO:
+client.on('qr', (qr) => {
+    console.log('============= ¡NUEVO CÓDIGO QR! =============');
+    console.log('ESCANEA ESTE QR CON TU WHATSAPP:');
+    qrcode.generate(qr, { small: true });
+    console.log('=============================================');
 });
 
 client.on('ready', () => {
@@ -78,11 +65,11 @@ client.on('ready', () => {
 });
 
 client.on('disconnected', (reason) => {
-  console.warn('WhatsApp client desconectado:', reason);
-  if (!shuttingDown) {
-    console.log('Reiniciando WhatsApp client después de desconexión...');
-    client.initialize();
-  }
+    console.warn('WhatsApp client desconectado:', reason);
+    if (!shuttingDown) {
+        console.log('Reiniciando WhatsApp client después de desconexión...');
+        client.initialize();
+    }
 });
 
 registerShutdownHandlers();
