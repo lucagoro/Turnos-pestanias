@@ -1,4 +1,3 @@
-import qrcode from 'qrcode-terminal';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 
@@ -8,6 +7,9 @@ const client = new Client({
     }),
     puppeteer: {
         handleSIGINT: false,
+        // 🔥 CLAVE: Le cambiamos el "User-Agent" para que WhatsApp sepa exactamente qué navegador es
+        // y no rompa la función del código de vinculación
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -15,7 +17,7 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process', // Ayuda a que consuma la mitad de RAM en el servidor
+            '--single-process',
             '--disable-gpu'
         ],
     }
@@ -52,12 +54,24 @@ const registerShutdownHandlers = () => {
     });
 };
 
-// 🚀 EVENTO DEL QR COMPACTO ACTIVADO:
-client.on('qr', (qr) => {
-    console.log('============= ¡NUEVO CÓDIGO QR! =============');
-    console.log('ESCANEA ESTE QR CON TU WHATSAPP:');
-    qrcode.generate(qr, { small: true });
-    console.log('=============================================');
+// 🔑 NUEVO INTENTO DE CÓDIGO DE VINCULACIÓN ACTUALIZADO:
+client.on('qr', async (qr) => {
+    // Busca tu número en el .env de Railway, y si no está, usa el tuyo de pruebas
+    const numeroDeYas = process.env.WHATSAPP_NUMBER || "5492314617457"; 
+    
+    console.log(`🤖 Intentando generar código de vinculación para: ${numeroDeYas}...`);
+    
+    try {
+        // Le damos un mini respiro de 3 segundos a Puppeteer para que cargue bien la página antes de pedir el código
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const pairingCode = await client.requestPairingCode(numeroDeYas);
+        console.log("==========================================");
+        console.log(`🔑 TU CÓDIGO DE VINCULACIÓN ES: ${pairingCode}`);
+        console.log("==========================================");
+    } catch (err) {
+        console.error("❌ Falló el código. Error original:", err.message || err);
+    }
 });
 
 client.on('ready', () => {
@@ -74,7 +88,6 @@ client.on('disconnected', (reason) => {
 
 registerShutdownHandlers();
 
-// Exportamos la función usando sintaxis ESM
 const normalizeWhatsappNumber = (number) => {
     if (!number) throw new Error('Número de WhatsApp vacío');
     const raw = number.toString().trim();
