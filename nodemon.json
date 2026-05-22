@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "sessions/*",
+    "Backend/sessions/*",
+    "Frontend/sessions/*"
+  ]
+}

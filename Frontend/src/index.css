@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colores Personalizados */
+  --color-rose-light: #f5e6e8;
+  --color-rose-mid: #e8c5ca;
+  --color-rose-deep: #c9858f;
+  --color-rose-text: #8b4a52;
+  --color-warm-white: #fefcf8;
+  --color-beige-soft: #f0ebe0;
+  --color-text-dark: #3a2e2e;
+  --color-text-mid: #7a6a6a;
+
+  /* Fuentes Personalizadas */
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+/* Aplicamos el fondo al body usando la nueva variable */
+@layer base {
+  body {
+    @apply bg-warm-white antialiased text-text-dark;
+  }
+}

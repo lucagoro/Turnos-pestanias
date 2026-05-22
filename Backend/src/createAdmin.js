@@ -3,10 +3,12 @@ import bcrypt from 'bcrypt';
 import 'dotenv/config';
 
 async function createAdmin() {
-  const email = "admin@estudio.com"; 
-  const password = "admin.01";    // password123
+  // Jalamos el email y la contraseña desde las variables de entorno (.env)
+  // Si no existen en el .env, usamos los tuyos de siempre como "respaldo" por las dudas
+  const email = process.env.ADMIN_INITIAL_EMAIL;
+  const password = process.env.ADMIN_INITIAL_PASSWORD;
 
-  console.log("--- Iniciando creación de Admin ---");
+  console.log("--- Iniciando creación/actualización de Admin ---");
   
   // Verificamos si la URL de la base de datos existe
   if (!process.env.DATABASE_URL) {
@@ -19,18 +21,24 @@ async function createAdmin() {
     
     console.log("Intentando conectar a Neon...");
     
-    const admin = await prisma.admin.create({
-      data: {
+    // Cambiado a upsert para que si el admin ya existe, solo actualice la contraseña
+    // y evite el error de "llave duplicada" si volvés a correr el script en la nube.
+    const admin = await prisma.admin.upsert({
+      where: { email: email },
+      update: {
+        password: hashedPassword
+      },
+      create: {
         email: email,
         password: hashedPassword
       }
     });
 
-    console.log("✅ Admin creado con éxito:", admin.email);
+    console.log("✅ Admin configurado con éxito:", admin.email);
   } catch (error) {
     console.error("❌ ERROR DETALLADO:");
     if (error.code) console.error("Código de error Prisma:", error.code);
-    console.error(error); // Esto va a imprimir todo el objeto de error
+    console.error(error); 
   } finally {
     await prisma.$disconnect();
   }

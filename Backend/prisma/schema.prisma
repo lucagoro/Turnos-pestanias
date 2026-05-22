@@ -22,48 +22,75 @@ model Service {
   name            String
   description     String
   price           Decimal       @db.Decimal(10, 2)
-  durationMinutes Int           // Clave para calcular el fin del turno
+  durationMinutes Int // Clave para calcular el fin del turno
   active          Boolean       @default(true)
   appointments    Appointment[]
+  combos          Combo[]
+}
+
+model Combo {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  price       Decimal  @db.Decimal(10, 2)
+  active      Boolean  @default(true)
+  services    Service[]
+  appointments Appointment[]
+}
+
+enum AppointmentStatus {
+  PENDING_PAYMENT
+  PENDING_REVIEW
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentMethod {
+  MP
+  TRANSFERENCIA
+  EFECTIVO
 }
 
 // 3. Turnos (Con soporte para Mercado Pago)
 model Appointment {
-  id              Int      @id @default(autoincrement())
-  clientName      String
-  clientWhatsApp  String
-  startTime       DateTime // Fecha y hora de inicio
-  endTime         DateTime // IMPORTANTE: Para validar solapamientos fácil
-  
-  // Estados: PENDING_PAYMENT, CONFIRMED, CANCELLED, COMPLETED
-  status          String   @default("PENDING_PAYMENT") 
-  
-  // Para Mercado Pago
-  mpPreferenceId  String?  @unique // Para vincular con el pago
-  depositAmount   Decimal @db.Decimal(10, 2)
-  paymentMethod   String  @default("MP")
+  id             Int      @id @default(autoincrement())
+  clientName     String
+  clientWhatsApp String
+  startTime      DateTime // Fecha y hora de inicio
+  endTime        DateTime // IMPORTANTE: Para validar solapamientos fácil
 
-  serviceId       Int
-  service         Service  @relation(fields: [serviceId], references: [id])
-  
-  createdAt       DateTime @default(now())
+  status AppointmentStatus @default(PENDING_PAYMENT)
+
+  // Para Mercado Pago
+  mpPreferenceId String?       @unique // Para vincular con el pago
+  depositAmount  Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod @default(MP)
+
+  serviceId Int?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  comboId Int?
+  combo   Combo? @relation(fields: [comboId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 // 4. Horarios Fijos (Lunes a Viernes, etc.)
 model BusinessHours {
   id        Int     @id @default(autoincrement())
-  dayOfWeek Int     // 0 = Domingo, 1 = Lunes...
-  openTime  String  // "09:00"
-  closeTime String  // "18:00"
+  dayOfWeek Int // 0 = Domingo, 1 = Lunes...
+  openTime  String // "09:00"
+  closeTime String // "18:00"
   enabled   Boolean @default(true)
 }
 
 // 5. Bloqueos de Agenda (Días especiales)
 model ScheduleBlock {
-  id          Int      @id @default(autoincrement())
-  date        DateTime // Día bloqueado
-  allDay      Boolean  @default(true)
-  startTime   DateTime?  // Por si bloquea solo una tarde
-  endTime     DateTime?
-  reason      String?  // "Médico", "Feriado"
+  id        Int       @id @default(autoincrement())
+  date      DateTime // Día bloqueado
+  allDay    Boolean   @default(true)
+  startTime DateTime? // Por si bloquea solo una tarde
+  endTime   DateTime?
+  reason    String? // "Médico", "Feriado"
 }
