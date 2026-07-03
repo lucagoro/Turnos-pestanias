@@ -51,7 +51,12 @@ const parseLocalDateTime = (date, time) => {
 
 const formatLocalTime = (date) => {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString('es-AR', { 
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'America/Argentina/Buenos_Aires' 
+  });
 };
 
 // --- RUTA DE LOGIN ---
@@ -373,8 +378,12 @@ if (paymentMethod === PAYMENT_METHOD.MP) {
     // CASO B: EFECTIVO / TRANSFERENCIA
     // Aquí el bot envía un mensaje avisando que el turno está "A confirmar"
     const dateFormatted = new Date(start).toLocaleString('es-AR', {
-        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-    });
+    day: '2-digit', 
+    month: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'America/Argentina/Buenos_Aires'
+});
 
     let msgAdmin;
     if (paymentMethod === PAYMENT_METHOD.TRANSFERENCIA) {
@@ -431,14 +440,23 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
 
             // ENVIAR MENSAJE DE ÉXITO POR BOT
             const dateStr = new Date(updated.startTime).toLocaleString('es-AR', {
-                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                day: '2-digit', 
+                month: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'America/Argentina/Buenos_Aires' // ← CLAVE MÁGICA
             });
 
             const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍`;
             
-            await sendWhatsappMessage(updated.clientWhatsApp, successMsg);
-            
-            console.log(`✅ Turno #${appointmentId} confirmado y WhatsApp enviado`);
+            try {
+              await sendWhatsappMessage(updated.clientWhatsApp, successMsg);
+              console.log(`✅ Turno #${appointmentId} confirmado y WhatsApp enviado`);
+            } catch (whatsappError) {
+              console.error(`⚠️ Turno #${appointmentId} confirmado en DB, pero error al enviar WhatsApp:`, whatsappError.message);
+              // El turno ya está confirmado, así que no es crítico si falla WhatsApp
+              // Pero lo registramos para debuggear
+            }
           }
         }
       }

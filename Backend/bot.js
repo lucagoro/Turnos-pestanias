@@ -25,10 +25,12 @@ const client = new Client({
 });
 
 let shuttingDown = false;
+let isClientReady = false;
 
 const shutdownWhatsappClient = async (reason) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    isClientReady = false;
 
     console.log(`Cerrando WhatsApp client (${reason})...`);
     try {
@@ -66,10 +68,12 @@ client.on('qr', (qr) => {
 });
 
 client.on('ready', () => {
+    isClientReady = true;
     console.log('✅ Bot de WhatsApp conectado y listo!');
 });
 
 client.on('disconnected', (reason) => {
+    isClientReady = false;
     console.warn('WhatsApp client desconectado:', reason);
     if (!shuttingDown) {
         console.log('Reiniciando WhatsApp client después de desconexión...');
@@ -88,25 +92,53 @@ const normalizeWhatsappNumber = (number) => {
     return `${digits}@c.us`;
 };
 
-export const sendWhatsappMessage = async (number, message, retries = 2) => {
+// 🔥 FUNCIÓN AUXILIAR: Esperar a que el cliente esté listo con timeout
+const waitForClientReady = async (maxWaitTime = 10000) => {
+    const startTime = Date.now();
+    while (!isClientReady) {
+        if (Date.now() - startTime > maxWaitTime) {
+            throw new Error('WhatsApp client no está listo después de esperar 10 segundos');
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+};
+
+export const sendWhatsappMessage = async (number, message, retries = 3) => {
     try {
         const chatId = normalizeWhatsappNumber(number);
         
-        // 🔥 CLAVE: Le damos un respiro al cliente por si la página se estaba refrescando
+        // ✅ CLAVE: Validar que el cliente esté listo antes de intentar enviar
+        if (!isClientReady) {
+            console.log(`⏳ Cliente de WhatsApp no está listo. Esperando...`);
+            await waitForClientReady();
+        }
+        
+        // 🔥 Dar un respiro al cliente por si está procesando algo
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         await client.sendMessage(chatId, message);
         console.log(`📩 Mensaje enviado con éxito a ${number}`);
     } catch (error) {
-        console.error(`❌ Error enviando mensaje a ${number}:`, error.message || error);
+        const errorMsg = error.message || error.toString();
+        console.error(`❌ Error enviando mensaje a ${number}:`, errorMsg);
         
-        // Si todavía nos quedan intentos, esperamos 7 segundos y probamos de nuevo
+        // 🚨 MANEJO ESPECÍFICO: Detached Frame indica que Puppeteer se reinició
+        if (errorMsg.includes('Attempted to use detached Frame') || errorMsg.includes('detached')) {
+            console.warn('⚠️ Cliente desconectado (Detached Frame). Marcando como no listo y esperando reinicio...');
+            isClientReady = false;
+            
+            // Esperar un poco más antes de reintentar (el cliente necesita reiniciarse)
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+        
+        // Si todavía nos quedan intentos, reintentamos
         if (retries > 0) {
-            console.log(`🔄 Reintentando envío... Quedan ${retries} intentos.`);
-            await new Promise(resolve => setTimeout(resolve, 7000));
+            console.log(`🔄 Reintentando envío... (${retries} intentos restantes)`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
             return sendWhatsappMessage(number, message, retries - 1);
         } else {
-            console.error(`💥 Se agotaron los reintentos. El mensaje a ${number} no se pudo enviar.`);
+            console.error(`💥 Se agotaron los reintentos. Mensaje a ${number} no se pudo enviar.`);
+            throw error;
         }
     }
 };
