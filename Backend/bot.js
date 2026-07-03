@@ -9,8 +9,7 @@ const client = new Client({
     }),
     puppeteer: {
         handleSIGINT: false,
-        // 🔥 CLAVE: Le cambiamos el "User-Agent" para que WhatsApp sepa exactamente qué navegador es
-        // y no rompa la función del código de vinculación
+        headless: 'new', // 🔥 Podés usar 'new' o true, 'new' es lo recomendado en versiones actuales
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         args: [
             '--no-sandbox',
@@ -89,7 +88,7 @@ const normalizeWhatsappNumber = (number) => {
     return `${digits}@c.us`;
 };
 
-export const sendWhatsappMessage = async (number, message, retries = 3) => {
+export const sendWhatsappMessage = async (number, message, retries = 2) => {
     try {
         const chatId = normalizeWhatsappNumber(number);
         
@@ -101,10 +100,10 @@ export const sendWhatsappMessage = async (number, message, retries = 3) => {
     } catch (error) {
         console.error(`❌ Error enviando mensaje a ${number}:`, error.message || error);
         
-        // Si todavía nos quedan intentos, esperamos 3 segundos y probamos de nuevo
+        // Si todavía nos quedan intentos, esperamos 7 segundos y probamos de nuevo
         if (retries > 0) {
             console.log(`🔄 Reintentando envío... Quedan ${retries} intentos.`);
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 7000));
             return sendWhatsappMessage(number, message, retries - 1);
         } else {
             console.error(`💥 Se agotaron los reintentos. El mensaje a ${number} no se pudo enviar.`);

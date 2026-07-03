@@ -317,7 +317,7 @@ app.post('/api/appointments', async (req, res) => {
 if (paymentMethod === PAYMENT_METHOD.MP) {
   console.log("¡¡¡ENTRANDO A LA RUTA ACTUALIZADA DE MERCADO PAGO CON FETCH!!!");
   
-  // 🌐 Definimos las URLs base usando las variables de entorno
+  // Definimos las URLs base usando las variables de entorno
   // Si no existen (estamos en local), usan por defecto las tuyos de prueba
   const frontendUrl = process.env.FRONTEND_URL || "http://127.0.0.1:5173";
   const backendUrl = process.env.BACKEND_URL || "http://localhost:3000"; // Cambialo por tu puerto si usás otro
