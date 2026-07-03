@@ -354,29 +354,20 @@ if (paymentMethod === PAYMENT_METHOD.MP) {
     }
   };
 
-  const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.ACCESS_TOKEN_MP}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(preferenceData)
-  });
+  try {
+    const preference = new Preference(mercadopagoClient);
+    const result = await preference.create({ body: preferenceData });
 
-  if (!mpResponse.ok) {
-    const mpError = await mpResponse.json();
-    console.error("❌ ERROR REAL DE MERCADO PAGO:", mpError);
+    await prisma.appointment.update({
+      where: { id: newAppointment.id },
+      data: { mpPreferenceId: result.id }
+    });
+
+    return res.json({ appointment: newAppointment, init_point: result.init_point });
+  } catch (error) {
+    console.error("❌ ERROR DE MERCADO PAGO:", error.message);
     throw new Error("Mercado Pago rechazó la creación de la preferencia");
   }
-
-  const result = await mpResponse.json();
-
-  await prisma.appointment.update({
-    where: { id: newAppointment.id },
-    data: { mpPreferenceId: result.id }
-  });
-
-  return res.json({ appointment: newAppointment, init_point: result.init_point });
 }
 
     // CASO B: EFECTIVO / TRANSFERENCIA
@@ -443,7 +434,7 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
                 day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
             });
 
-            const successMsg = `✅ ¡Pago confirmado, *${updated.clientName}*!\n\nTu turno para *${updated.service?.name || updated.combo?.name}* está listo:\n📅 *${dateStr}hs*\n\n¡Te esperamos!`;
+            const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍`;
             
             await sendWhatsappMessage(updated.clientWhatsApp, successMsg);
             
