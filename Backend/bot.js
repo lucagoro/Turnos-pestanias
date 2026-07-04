@@ -93,11 +93,11 @@ const normalizeWhatsappNumber = (number) => {
 };
 
 // 🔥 FUNCIÓN AUXILIAR: Esperar a que el cliente esté listo con timeout
-const waitForClientReady = async (maxWaitTime = 10000) => {
+const waitForClientReady = async (maxWaitTime = 30000) => {
     const startTime = Date.now();
     while (!isClientReady) {
         if (Date.now() - startTime > maxWaitTime) {
-            throw new Error('WhatsApp client no está listo después de esperar 10 segundos');
+            throw new Error('WhatsApp client no está listo después de esperar 30 segundos');
         }
         await new Promise(resolve => setTimeout(resolve, 500));
     }
@@ -136,6 +136,7 @@ export const sendWhatsappMessage = async (number, message, retries = 3) => {
             try {
                 await client.initialize();
                 console.log('🔄 Cliente reinicializado tras detached frame. Reintentando envío...');
+                await new Promise(resolve => setTimeout(resolve, 20000));
             } catch (initError) {
                 console.error('❌ Error al reinicializar el cliente tras detached frame:', initError);
                 throw initError;
@@ -158,4 +159,4 @@ export const sendWhatsappMessage = async (number, message, retries = 3) => {
     }
 };
 
-client.initialize();
+//client.initialize();
