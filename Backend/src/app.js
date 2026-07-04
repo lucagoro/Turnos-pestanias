@@ -393,7 +393,8 @@ Mi nombre es Yas💖
 Tu solicitud de turno para *${item.name}* (${dateFormatted}hs) fue recibida ✨
 Como elegiste *Transferencia*, el turno queda pendiente hasta que envíes el comprobante de pago por este chat al alias: "${process.env.BANK_ALIAS}" y confirmemos la seña.
 
-Me encuentro en Falucho 370, dpto 1📍`;
+Me encuentro en Falucho 370, dpto 1📍
+¡Te espero!💖`;
     } else if (paymentMethod === PAYMENT_METHOD.EFECTIVO) {
       msgAdmin = `¡Hola ${clientName}! Recibimos tu pedido de turno para *${item.name}* (${dateFormatted}hs).\n\nComo elegiste *Efectivo*, el turno queda pendiente hasta que confirmemos el pago de la seña en el local.`;
     } else {
@@ -447,7 +448,7 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
                 timeZone: 'America/Argentina/Buenos_Aires' 
             });
 
-            const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍`;
+            const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍\n¡Te espero!💖`;
             
             try {
               await sendWhatsappMessage(updated.clientWhatsApp, successMsg);
