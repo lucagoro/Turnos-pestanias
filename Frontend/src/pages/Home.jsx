@@ -36,11 +36,13 @@ useEffect(() => {
         {/* Contenedor Horizontal Estilo Estudio */}
         <div className="relative mx-auto mb-8 w-full max-w-md aspect-[16/10] overflow-hidden rounded-2xl border border-rose-mid/20 bg-white p-1.5 shadow-md shadow-rose-text/5">
           {/* Imagen en formato horizontal optimizada para detalles */}
-          <img 
-            src="/images/ft-home.jpeg" 
-            alt="Visage Studio - Resultado" 
-            className="h-full w-full rounded-[10px] object-cover brightness-[1.03] saturate-[1.05] contrast-[1.02] active:scale-[1.01] transition-transform duration-500"
-          />
+          <div className="relative h-full w-full overflow-hidden rounded-[10px] active:scale-[1.01] transition-transform duration-500">
+            <img 
+              src="/images/ft-home-tres.jpeg" 
+              alt="Visage Studio - Resultado" 
+              className="absolute max-none w-[170%] scale-[1.80] h-auto -left-[-12%] -top-[35%] brightness-[1.03] saturate-[1.05] contrast-[1.02]"
+            />
+          </div>
 
           {/* Sombreado perimetral interno para dar profundidad sin oscurecer */}
           <div className="absolute inset-1.5 z-20 rounded-[10px] ring-1 ring-inset ring-black/5 pointer-events-none"></div>
