@@ -14,7 +14,7 @@ const SuccessPage = () => {
         {/* Ícono de Éxito Aesthetic */}
         <div className="mb-8 relative inline-block">
           <div className="w-24 h-24 bg-rose-light rounded-full flex items-center justify-center animate-pulse">
-            <span className="text-4xl">✨</span>
+            <span className="text-4xl">❀</span>
           </div>
           <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-rose-mid">
             <span className="text-rose-text text-sm font-bold">✓</span>

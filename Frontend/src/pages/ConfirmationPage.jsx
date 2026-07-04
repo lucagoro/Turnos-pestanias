@@ -200,11 +200,11 @@ const ConfirmationPage = () => {
           <button 
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-5 rounded-full font-bold uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${
+            className={`w-full py-5 rounded-full font-bold tracking-widest text-sm shadow-xl transition-all active:scale-95 ${
               isSubmitting ? 'bg-text-mid cursor-not-allowed' : 'bg-rose-text text-white hover:bg-rose-deep shadow-rose-text/20'
             }`}
           >
-            {isSubmitting ? 'Procesando...' : 'Finalizar Reserva ✨'}
+            {isSubmitting ? 'Procesando...' : 'Finalizar Reserva ❀'}
           </button>
         </form>
       </main>

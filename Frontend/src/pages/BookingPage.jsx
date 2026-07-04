@@ -166,9 +166,9 @@ const BookingPage = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/confirm?${serviceId ? `serviceId=${serviceId}` : `comboId=${comboId}`}&date=${dateStr}&slot=${selectedSlot}`)}
-                  className="inline-flex items-center justify-center w-full rounded-full bg-rose-text px-6 py-4 text-sm font-bold uppercase tracking-widest text-white transition hover:bg-rose-deep active:scale-95 shadow-lg shadow-rose-text/20"
+                  className="inline-flex items-center justify-center w-full rounded-full bg-rose-text px-6 py-4 text-sm font-bold tracking-widest text-white transition hover:bg-rose-deep active:scale-95 shadow-lg shadow-rose-text/20"
                 >
-                  Continuar a confirmar ✨
+                  Continuar a confirmar ❀
                 </button>
               </div>
             )}
