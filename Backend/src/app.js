@@ -444,7 +444,7 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
                 month: '2-digit', 
                 hour: '2-digit', 
                 minute: '2-digit',
-                timeZone: 'America/Argentina/Buenos_Aires' // ← CLAVE MÁGICA
+                timeZone: 'America/Argentina/Buenos_Aires' 
             });
 
             const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍`;

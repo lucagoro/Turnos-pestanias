@@ -122,13 +122,28 @@ export const sendWhatsappMessage = async (number, message, retries = 3) => {
         const errorMsg = error.message || error.toString();
         console.error(`❌ Error enviando mensaje a ${number}:`, errorMsg);
         
-        // 🚨 MANEJO ESPECÍFICO: Detached Frame indica que Puppeteer se reinició
+        // 🚨 MANEJO ESPECÍFICO: Detached Frame indica que Puppeteer perdió la ventana
         if (errorMsg.includes('Attempted to use detached Frame') || errorMsg.includes('detached')) {
-            console.warn('⚠️ Cliente desconectado (Detached Frame). Marcando como no listo y esperando reinicio...');
+            console.warn('⚠️ DETACHED FRAME DETECTADO: Reiniciando cliente de WhatsApp...');
             isClientReady = false;
-            
-            // Esperar un poco más antes de reintentar (el cliente necesita reiniciarse)
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            try {
+                await client.destroy();
+                console.log('🧹 Cliente destruido tras detached frame. Reinicializando...');
+            } catch (destroyError) {
+                console.warn('⚠️ Error al destruir el cliente tras detached frame:', destroyError);
+            }
+
+            try {
+                await client.initialize();
+                console.log('🔄 Cliente reinicializado tras detached frame. Reintentando envío...');
+            } catch (initError) {
+                console.error('❌ Error al reinicializar el cliente tras detached frame:', initError);
+                throw initError;
+            }
+
+            if (retries > 0) {
+                return sendWhatsappMessage(number, message, retries - 1);
+            }
         }
         
         // Si todavía nos quedan intentos, reintentamos
