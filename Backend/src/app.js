@@ -433,6 +433,22 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
         if (data.status === 'approved') {
           const appointmentId = Number(data.external_reference);
           if (!Number.isNaN(appointmentId)) {
+            // 🔥 FRENO DE MANO: Buscamos primero el turno actual en la DB
+            const currentAppointment = await prisma.appointment.findUnique({
+              where: { id: appointmentId }
+            });
+
+            // 🛑 Si el turno NO existe o YA está confirmado, cortamos acá
+            if (!currentAppointment) {
+              console.warn(`⚠️ Webhook recibió un pago para el turno #${appointmentId} pero no existe en DB.`);
+              return res.sendStatus(200);
+            }
+
+            if (currentAppointment.status === STATUS.CONFIRMED) {
+              console.log(`🛡️ [Freno de Mano] El turno #${appointmentId} ya estaba confirmado. Ignorando alerta duplicada.`);
+              return res.sendStatus(200); // Le avisamos a MP que llegó bien, pero no hacemos nada más
+            }
+            
             const updated = await prisma.appointment.update({
               where: { id: appointmentId },
               data: { status: STATUS.CONFIRMED },
