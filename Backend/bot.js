@@ -158,4 +158,4 @@ export const sendWhatsappMessage = async (number, message, maxRetries = 2) => {
     }
 };
 
-//client.initialize();
+client.initialize();
