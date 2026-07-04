@@ -103,60 +103,59 @@ const waitForClientReady = async (maxWaitTime = 30000) => {
     }
 };
 
-export const sendWhatsappMessage = async (number, message, retries = 3) => {
-    try {
-        const chatId = normalizeWhatsappNumber(number);
-        
-        // ✅ CLAVE: Validar que el cliente esté listo antes de intentar enviar
-        if (!isClientReady) {
-            console.log(`⏳ Cliente de WhatsApp no está listo. Esperando...`);
-            await waitForClientReady();
-        }
-        
-        // 🔥 Dar un respiro al cliente por si está procesando algo
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        await client.sendMessage(chatId, message);
-        console.log(`📩 Mensaje enviado con éxito a ${number}`);
-    } catch (error) {
-        const errorMsg = error.message || error.toString();
-        console.error(`❌ Error enviando mensaje a ${number}:`, errorMsg);
-        
-        // 🚨 MANEJO ESPECÍFICO: Detached Frame indica que Puppeteer perdió la ventana
-        if (errorMsg.includes('Attempted to use detached Frame') || errorMsg.includes('detached')) {
-            console.warn('⚠️ DETACHED FRAME DETECTADO: Reiniciando cliente de WhatsApp...');
-            isClientReady = false;
-            try {
-                await client.destroy();
-                console.log('🧹 Cliente destruido tras detached frame. Reinicializando...');
-            } catch (destroyError) {
-                console.warn('⚠️ Error al destruir el cliente tras detached frame:', destroyError);
+export const sendWhatsappMessage = async (number, message, maxRetries = 2) => {
+    const chatId = normalizeWhatsappNumber(number);
+    let attempts = 0;
+    let sentSuccessfully = false;
+
+    // Usamos un bucle clásico. Si falla, pasa al siguiente intento de forma lineal
+    while (attempts <= maxRetries && !sentSuccessfully) {
+        try {
+            attempts++;
+            
+            // Validar semáforo
+            if (!isClientReady) {
+                console.log(`⏳ [Intento ${attempts}] WhatsApp no está listo. Esperando 15s...`);
+                // Esperamos un máximo de 15 segundos en este intento
+                const startTime = Date.now();
+                while (!isClientReady && Date.now() - startTime < 15000) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
 
-            try {
-                await client.initialize();
-                console.log('🔄 Cliente reinicializado tras detached frame. Reintentando envío...');
+            // Si pasó el tiempo y sigue sin estar listo, forzamos error para ir al catch
+            if (!isClientReady) {
+                throw new Error("El cliente no se recuperó a tiempo.");
+            }
+
+            // Enviar mensaje real
+            await client.sendMessage(chatId, message);
+            console.log(`📩 Mensaje enviado con éxito a ${number} (Intento ${attempts})`);
+            sentSuccessfully = true; // 🔥 CORTA EL BUCLE ACÁ. No manda nunca más nada.
+
+        } catch (error) {
+            const errorMsg = error.message || error.toString();
+            console.error(`❌ Error en intento ${attempts} para ${number}:`, errorMsg);
+
+            if (errorMsg.includes('detached') || errorMsg.includes('Frame')) {
+                console.warn('⚠️ Detached Frame detectado. Reiniciando Puppeteer en caliente...');
+                isClientReady = false;
+                try { await client.destroy(); } catch(e){}
+                try { await client.initialize(); } catch(e){}
+                
+                // Colchón de tiempo lineal para que no sature
+                console.log('⏳ Esperando 20 segundos a que levante el nuevo navegador...');
                 await new Promise(resolve => setTimeout(resolve, 20000));
-            } catch (initError) {
-                console.error('❌ Error al reinicializar el cliente tras detached frame:', initError);
-                throw initError;
+            } else {
+                // Si es otro error común, espera 5 segundos antes de probar el siguiente intento
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
+        }
+    }
 
-            if (retries > 0) {
-                return sendWhatsappMessage(number, message, retries - 1);
-            }
-        }
-        
-        // Si todavía nos quedan intentos, reintentamos
-        if (retries > 0) {
-            console.log(`🔄 Reintentando envío... (${retries} intentos restantes)`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            return sendWhatsappMessage(number, message, retries - 1);
-        } else {
-            console.error(`💥 Se agotaron los reintentos. Mensaje a ${number} no se pudo enviar.`);
-            throw error;
-        }
+    if (!sentSuccessfully) {
+        console.error(`💥 Se agotaron los ${maxRetries} intentos de forma lineal. Mensaje cancelado para evitar spam.`);
     }
 };
 
-//client.initialize();
+client.initialize();
