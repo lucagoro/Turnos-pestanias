@@ -59,6 +59,9 @@ const formatLocalTime = (date) => {
   });
 };
 
+// Candado global para evitar que Mercado Pago procese el mismo turno en paralelo
+const webhooksEnProceso = new Set();
+
 // --- RUTA DE LOGIN ---
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -413,66 +416,66 @@ Me encuentro en Falucho 370, dpto 1📍
 
 app.post('/api/webhook/mercadopago', async (req, res) => {
   const { query } = req;
-  // // MP envía notificaciones de muchos tipos. Solo nos importa 'payment'
   const topic = query.topic || query.type;
 
-   try {
-     if (topic === 'payment') {
-       const paymentId = query.id || query['data.id'];
+  try {
+    if (topic === 'payment') {
+      const paymentId = query.id || query['data.id'];
       
-       // Consultamos a Mercado Pago por el estado de ese pago
-       const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: {
           'Authorization': `Bearer ${process.env.ACCESS_TOKEN_MP}`
         }
       });
 
-        if (response.ok) {
+      if (response.ok) {
         const data = await response.json();
 
         if (data.status === 'approved') {
           const appointmentId = Number(data.external_reference);
           if (!Number.isNaN(appointmentId)) {
-            // 🔥 FRENO DE MANO: Buscamos primero el turno actual en la DB
-            const currentAppointment = await prisma.appointment.findUnique({
-              where: { id: appointmentId }
-            });
-
-            // 🛑 Si el turno NO existe o YA está confirmado, cortamos acá
-            if (!currentAppointment) {
-              console.warn(`⚠️ Webhook recibió un pago para el turno #${appointmentId} pero no existe en DB.`);
-              return res.sendStatus(200);
+            
+            // 🔒 SÚPER CANDADO: Si este ID ya se está procesando en este instante, abortamos de inmediato
+            if (webhooksEnProceso.has(appointmentId)) {
+              console.log(`🛡️ [Candado] Bloqueada petición paralela para el turno #${appointmentId}`);
+              return res.sendStatus(200); 
             }
 
-            if (currentAppointment.status === STATUS.CONFIRMED) {
-              console.log(`🛡️ [Freno de Mano] El turno #${appointmentId} ya estaba confirmado. Ignorando alerta duplicada.`);
-              return res.sendStatus(200); // Le avisamos a MP que llegó bien, pero no hacemos nada más
-            }
-            
-            const updated = await prisma.appointment.update({
-              where: { id: appointmentId },
-              data: { status: STATUS.CONFIRMED },
-              include: { service: true, combo: { include: { services: true } } }
-            });
+            // Activamos el candado para este turno
+            webhooksEnProceso.add(appointmentId);
 
-            // ENVIAR MENSAJE DE ÉXITO POR BOT
-            const dateStr = new Date(updated.startTime).toLocaleString('es-AR', {
-                day: '2-digit', 
-                month: '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                timeZone: 'America/Argentina/Buenos_Aires' 
-            });
-
-            const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍\n¡Te espero!💖`;
-            
             try {
+              // Buscamos el turno actual en la DB
+              const currentAppointment = await prisma.appointment.findUnique({
+                where: { id: appointmentId }
+              });
+
+              if (!currentAppointment || currentAppointment.status === STATUS.CONFIRMED) {
+                console.log(`🛡️ El turno #${appointmentId} ya estaba confirmado o no existe.`);
+                webhooksEnProceso.delete(appointmentId); // Liberamos el candado antes de salir
+                return res.sendStatus(200);
+              }
+
+              const updated = await prisma.appointment.update({
+                where: { id: appointmentId },
+                data: { status: STATUS.CONFIRMED },
+                include: { service: true, combo: { include: { services: true } } }
+              });
+
+              const dateStr = new Date(updated.startTime).toLocaleString('es-AR', {
+                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                  timeZone: 'America/Argentina/Buenos_Aires' 
+              });
+
+              const successMsg = `¡Hola ${updated.clientName}!\n\nMi nombre es Yas💖\n\n✅ ¡Tu turno para *${updated.service?.name || updated.combo?.name}* (${dateStr}hs) fue confirmado!✨\n\nMe encuentro en Falucho 370, dpto 1📍\n¡Te espero!💖`;
+              
               await sendWhatsappMessage(updated.clientWhatsApp, successMsg);
               console.log(`✅ Turno #${appointmentId} confirmado y WhatsApp enviado`);
-            } catch (whatsappError) {
-              console.error(`⚠️ Turno #${appointmentId} confirmado en DB, pero error al enviar WhatsApp:`, whatsappError.message);
-              // El turno ya está confirmado, así que no es crítico si falla WhatsApp
-              // Pero lo registramos para debuggear
+
+            } finally {
+              // 🔑 CLAVE: Pase lo que pase, cuando termine todo el proceso (exitoso o con error),
+              // sacamos el ID del candado para futuros eventos de este turno.
+              webhooksEnProceso.delete(appointmentId);
             }
           }
         }
