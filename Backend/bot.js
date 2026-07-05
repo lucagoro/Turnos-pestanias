@@ -108,22 +108,20 @@ export const sendWhatsappMessage = async (number, message, maxRetries = 2) => {
     let attempts = 0;
     let sentSuccessfully = false;
 
-    // Usamos un bucle clásico. Si falla, pasa al siguiente intento de forma lineal
     while (attempts <= maxRetries && !sentSuccessfully) {
         try {
             attempts++;
+            console.log(`📡 [Bot] Iniciando intento ${attempts} para ${number}...`);
             
-            // Validar semáforo
+            // Validar si el cliente está listo
             if (!isClientReady) {
                 console.log(`⏳ [Intento ${attempts}] WhatsApp no está listo. Esperando 15s...`);
-                // Esperamos un máximo de 15 segundos en este intento
                 const startTime = Date.now();
                 while (!isClientReady && Date.now() - startTime < 15000) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 
-            // Si pasó el tiempo y sigue sin estar listo, forzamos error para ir al catch
             if (!isClientReady) {
                 throw new Error("El cliente no se recuperó a tiempo.");
             }
@@ -131,7 +129,10 @@ export const sendWhatsappMessage = async (number, message, maxRetries = 2) => {
             // Enviar mensaje real
             await client.sendMessage(chatId, message);
             console.log(`📩 Mensaje enviado con éxito a ${number} (Intento ${attempts})`);
-            sentSuccessfully = true; // 🔥 CORTA EL BUCLE ACÁ. No manda nunca más nada.
+            
+            // 🔥 CLAVE: Marcamos éxito y cortamos la función acá de cuajo
+            sentSuccessfully = true;
+            return; 
 
         } catch (error) {
             const errorMsg = error.message || error.toString();
@@ -143,18 +144,20 @@ export const sendWhatsappMessage = async (number, message, maxRetries = 2) => {
                 try { await client.destroy(); } catch(e){}
                 try { await client.initialize(); } catch(e){}
                 
-                // Colchón de tiempo lineal para que no sature
                 console.log('⏳ Esperando 20 segundos a que levante el nuevo navegador...');
                 await new Promise(resolve => setTimeout(resolve, 20000));
+                
+                // 🔥 OJO: Como ya reiniciamos el bot y esperamos los 20 segundos acá adentro,
+                // no queremos que el bucle sume intentos vacíos. Dejamos que vuelva a arrancar arriba.
             } else {
-                // Si es otro error común, espera 5 segundos antes de probar el siguiente intento
+                // Si es otro error, espera 5 segundos antes del siguiente intento
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
     }
 
     if (!sentSuccessfully) {
-        console.error(`💥 Se agotaron los ${maxRetries} intentos de forma lineal. Mensaje cancelado para evitar spam.`);
+        console.error(`💥 Se agotaron los ${maxRetries} intentos. Mensaje cancelado.`);
     }
 };
 
